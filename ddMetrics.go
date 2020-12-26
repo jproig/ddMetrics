@@ -16,6 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 const (
+	// TODO(jproig): make all the constantes parameters.
 	cmdTimeout = 2
 	loopCount = 10
 	writeOnDir = "/tmp"
