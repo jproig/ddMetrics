@@ -16,10 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 const (
-	// TODO(jproig): make all the constantes parameters.
 	cmdTimeout = 2
-	loopCount = 10
-	writeOnDir = "/tmp"
 )
 var (
 	appVersion string
@@ -98,8 +95,12 @@ func runDD(bs,count,destDir string) {
 func main() {
 	version.Set(1)
 	bind := ""
+	loopCount := 0
+	writeOnDir := ""
 	flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	flagset.StringVar(&bind, "bind", ":8080", "The socket to bind to.")
+	flagset.IntVar(&loopCount, "loop_count", 10, "How many time to loop over all the dd writes")
+	flagset.StringVar(&writeOnDir, "write_on_dir", "/tmp", "Directory were the target disk is mounted")
 	flagset.Parse(os.Args[1:])
 
 	r := prometheus.NewRegistry()
