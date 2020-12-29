@@ -89,6 +89,12 @@ func runDD(bs, count, destDir string) {
 	if len(throughputMB) == 0 {
 		var throughputReGB = regexp.MustCompile(`, ([0-9]*\.[0-9]+|[0-9]+) GB/s`)
 		throughputGB := throughputReGB.FindStringSubmatch(string(out))
+		if len(throughputGB) == 0 {
+		  // We will count this as a disk write error
+		  ddWriteTotal.WithLabelValues(bs, count, "err").Inc()
+		  log.Printf("unable to parse dd output: %s\n", out)
+		  return
+		}
 		th, _ := strconv.ParseFloat(throughputGB[1], 64)
 		ddWriteThroughput.WithLabelValues(bs, count).Add(th * 1000)
 	}
@@ -130,7 +136,7 @@ func main() {
 			runDD("8k", "10k", writeOnDir)
 			runDD("512", "1000", writeOnDir)
 		}
-		fmt.Printf("Done dding in the disk %s, will stay up so our metrics can be scraped.", writeOnDir)
+		log.Printf("Done dding in the disk %s, will stay up so our metrics can be scraped.", writeOnDir)
 	}()
 
 	http.Handle("/metrics", promhttp.HandlerFor(r, promhttp.HandlerOpts{}))
