@@ -4,7 +4,7 @@ ddMetrics (dd comes from the linux os dd command `man dd`) it is a simple disk w
 
 The only cool part is that it can be easily run in a docker container and metrics are going to be exposed so a prometheus server can scrape them.
 
-*CAVEAT*: this is not a comprehensive disk deviece benckmarking/testing tool, please do not use it like that.
+*CAVEAT*: this is not a comprehensive disk device benchmarking/testing tool, please do not use it like that.
 
 ## Exposed Metrics
 
