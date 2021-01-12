@@ -56,6 +56,13 @@ func tempFileName(dir, prefix, suffix string) string {
 	return filepath.Join(dir, prefix+hex.EncodeToString(randBytes)+suffix)
 }
 
+// tempFileName generates a temporary filename for use in testing or whatever
+func tempFileName(dir, prefix, suffix string) string {
+	randBytes := make([]byte, 16)
+	rand.Read(randBytes)
+	return filepath.Join(dir, prefix+hex.EncodeToString(randBytes)+suffix)
+}
+
 //runDD executes the dd os command, parses the output and pushes the results to the metrics.
 func runDD(bs, count, destDir string) {
 	// TODO(jproig): improve strconv error handling
@@ -80,25 +87,35 @@ func runDD(bs, count, destDir string) {
 		return
 	}
 
+    //TODO: improve this whole block, it is messy and really hard to undertand.
+    var thMB float64
 	var throughputReMB = regexp.MustCompile(`, ([0-9]*\.[0-9]+|[0-9]+) MB/s`)
 	throughputMB := throughputReMB.FindStringSubmatch(string(out))
 	if len(throughputMB) > 0 {
-		th, _ := strconv.ParseFloat(throughputMB[1], 64)
-		ddWriteThroughput.WithLabelValues(bs, count).Add(th)
+		thMB, _ = strconv.ParseFloat(throughputMB[1], 64)
 	}
 	if len(throughputMB) == 0 {
 		var throughputReGB = regexp.MustCompile(`, ([0-9]*\.[0-9]+|[0-9]+) GB/s`)
 		throughputGB := throughputReGB.FindStringSubmatch(string(out))
 		if len(throughputGB) == 0 {
-		  // We will count this as a disk write error
-		  ddWriteTotal.WithLabelValues(bs, count, "err").Inc()
-		  log.Printf("unable to parse dd output: %s\n", out)
-		  return
+		  var throughputReKB = regexp.MustCompile(`, ([0-9]*\.[0-9]+|[0-9]+) kB/s`)
+		  throughputKB := throughputReKB.FindStringSubmatch(string(out))
+		  if len(throughputKB) == 0 {
+		    // We will count this as a disk write error
+		    ddWriteTotal.WithLabelValues(bs, count, "err").Inc()
+		    log.Printf("unable to parse dd output: %s\n", out)
+		    return
+		  }
+		  th, _ := strconv.ParseFloat(throughputKB[1], 64)
+		  thMB = th / 1000
 		}
-		th, _ := strconv.ParseFloat(throughputGB[1], 64)
-		ddWriteThroughput.WithLabelValues(bs, count).Add(th * 1000)
+		if len(throughputGB) > 0 {
+		  th, _ := strconv.ParseFloat(throughputGB[1], 64)
+		  thMB = th * 1000
+		}
 	}
-
+    ddWriteThroughput.WithLabelValues(bs, count).Add(thMB)
+    
 	var durationRe = regexp.MustCompile(`, ([0-9]*\.[0-9]+|[0-9]+) s,`)
 	duration := durationRe.FindStringSubmatch(string(out))
 	if len(duration) > 0 {
@@ -108,7 +125,6 @@ func runDD(bs, count, destDir string) {
 
 	ddWriteTotal.WithLabelValues(bs, count, "ok").Inc()
 	log.Printf("Wrote bs=%s count %s", bs, count)
-
 }
 func main() {
 	version.Set(1)
